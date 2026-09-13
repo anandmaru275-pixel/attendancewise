@@ -1,164 +1,450 @@
 import { useState, useEffect } from "react";
 import { QRCodeCanvas } from "qrcode.react";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import "./App.css";
 
 function App() {
-  const [showRegister, setShowRegister] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activePage, setActivePage] = useState("Dashboard");
 
-  const [userName, setUserName] = useState("Admin");
+  const [userName, setUserName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const [students, setStudents] = useState([
-    { id: 1, name: "Rahul Sharma", roll: "101", status: "Present" },
-    { id: 2, name: "Priya Verma", roll: "102", status: "Present" },
-    { id: 3, name: "Amit Patel", roll: "103", status: "Absent" },
+    {
+      id: 1,
+      roll: "001",
+      name: "Rahul Sharma",
+      status: "Not Marked",
+    },
+    {
+      id: 2,
+      roll: "002",
+      name: "Priya Verma",
+      status: "Not Marked",
+    },
+    {
+      id: 3,
+      roll: "003",
+      name: "Amit Patel",
+      status: "Not Marked",
+    },
   ]);
 
-  const [newStudent, setNewStudent] = useState("");
+  const [newStudent, setNewStudent] = useState({
+    name: "",
+    roll: "",
+  });
 
-  // QR Attendance
-  const [showQR, setShowQR] = useState(false);
-  const [qrSession, setQrSession] = useState("");
-  const [qrTimeLeft, setQrTimeLeft] = useState(0);
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [qrData, setQrData] = useState("");
 
-  const addStudent = () => {
-    if (newStudent.trim() === "") return;
+  // QR Expiry - 30 Minutes
+  const [qrExpiry, setQrExpiry] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
 
-    setStudents([
-      ...students,
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
+
+  const [studentName, setStudentName] = useState("");
+  const [studentRoll, setStudentRoll] = useState("");
+  const [scanResult, setScanResult] = useState("");
+  const [scanning, setScanning] = useState(false);
+
+  // Load saved user
+  useEffect(() => {
+    const savedUser = localStorage.getItem("attendancewise_user");
+
+    if (savedUser) {
+      setUserName(savedUser);
+      setIsRegistered(true);
+    }
+  }, []);
+
+  // QR Scanner
+  useEffect(() => {
+    if (activePage !== "QR Attendance" || !scanning) {
+      return;
+    }
+
+    const scanner = new Html5QrcodeScanner(
+      "qr-reader",
       {
-        id: Date.now(),
-        name: newStudent,
-        roll: students.length + 101,
-        status: "Present",
+        fps: 10,
+        qrbox: {
+          width: 250,
+          height: 250,
+        },
       },
-    ]);
+      false
+    );
 
-    setNewStudent("");
+    scanner.render(
+      (decodedText) => {
+        setScanResult(decodedText);
+        setScanning(false);
+
+        scanner.clear().catch(() => {});
+      },
+      () => {}
+    );
+
+    return () => {
+      scanner.clear().catch(() => {});
+    };
+  }, [activePage, scanning]);
+
+  // QR Countdown Timer
+  useEffect(() => {
+    if (!qrExpiry) return;
+
+    const timer = setInterval(() => {
+      const remaining = Math.max(
+        0,
+        Math.floor((qrExpiry - Date.now()) / 1000)
+      );
+
+      setTimeLeft(remaining);
+
+      if (remaining <= 0) {
+        setQrData("");
+        setQrExpiry(null);
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [qrExpiry]);
+
+  // Register
+  const handleRegister = (e) => {
+    e.preventDefault();
+
+    if (!userName || !email || !password) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    localStorage.setItem("attendancewise_user", userName);
+    setIsRegistered(true);
+
+    alert("Registration successful! Please login.");
   };
 
+  // Login
+  const handleLogin = (e) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      alert("Please enter email and password");
+      return;
+    }
+
+    setIsLoggedIn(true);
+  };
+
+  // Logout
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setActivePage("Dashboard");
+  };
+
+  // Add Student
+  const addStudent = (e) => {
+    e.preventDefault();
+
+    if (!newStudent.name || !newStudent.roll) {
+      alert("Please enter student name and roll number");
+      return;
+    }
+
+    const student = {
+      id: Date.now(),
+      roll: newStudent.roll,
+      name: newStudent.name,
+      status: "Not Marked",
+    };
+
+    setStudents((prev) => [...prev, student]);
+
+    setNewStudent({
+      name: "",
+      roll: "",
+    });
+
+    alert("Student added successfully");
+  };
+
+  // Delete Student
   const deleteStudent = (id) => {
-    setStudents(students.filter((student) => student.id !== id));
+    if (window.confirm("Are you sure you want to delete this student?")) {
+      setStudents((prev) =>
+        prev.filter((student) => student.id !== id)
+      );
+    }
   };
 
+  // Change Status
   const changeStatus = (id, status) => {
-    setStudents(
-      students.map((student) =>
-        student.id === id ? { ...student, status } : student
+    setStudents((prev) =>
+      prev.map((student) =>
+        student.id === id
+          ? { ...student, status }
+          : student
       )
     );
   };
 
-  const generateQR = () => {
-    const session = `AttendanceWise-${Date.now()}`;
-    setQrSession(session);
-    setQrTimeLeft(30 * 60);
-    setShowQR(true);
+  // Mark All Present
+  const markAllPresent = () => {
+    setStudents((prev) =>
+      prev.map((student) => ({
+        ...student,
+        status: "Present",
+      }))
+    );
   };
 
-  useEffect(() => {
-    if (!showQR || qrTimeLeft <= 0) return;
+  // Mark All Absent
+  const markAllAbsent = () => {
+    setStudents((prev) =>
+      prev.map((student) => ({
+        ...student,
+        status: "Absent",
+      }))
+    );
+  };
 
-    const timer = setInterval(() => {
-      setQrTimeLeft((time) => time - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [showQR, qrTimeLeft]);
-
-  useEffect(() => {
-    if (qrTimeLeft === 0 && showQR) {
-      setShowQR(false);
+  // Generate QR Code - Valid for 30 Minutes
+  const generateQR = () => {
+    if (!selectedSubject) {
+      alert("Please select a subject");
+      return;
     }
-  }, [qrTimeLeft, showQR]);
 
-  const presentCount = students.filter(
-    (student) => student.status === "Present"
-  ).length;
+    const expiryTime = Date.now() + 30 * 60 * 1000;
 
-  const absentCount = students.filter(
-    (student) => student.status === "Absent"
-  ).length;
+    const data = {
+      subject: selectedSubject,
+      date: selectedDate || new Date().toLocaleDateString(),
+      teacher: userName,
+      sessionId: Date.now(),
+      expiresAt: expiryTime,
+    };
 
-  // LOGIN PAGE
-  if (!isLoggedIn) {
+    setQrData(JSON.stringify(data));
+    setQrExpiry(expiryTime);
+    setTimeLeft(30 * 60);
+    setScanResult("");
+  };
+
+  // Start Scanner
+  const startScanner = () => {
+    setScanResult("");
+    setScanning(true);
+  };
+
+  // Mark Student Present From QR
+  const markStudentFromQR = () => {
+    if (!studentName || !studentRoll) {
+      alert("Please enter student name and roll number");
+      return;
+    }
+
+    setStudents((prev) => {
+      const exists = prev.some(
+        (student) => student.roll === studentRoll
+      );
+
+      if (exists) {
+        return prev.map((student) =>
+          student.roll === studentRoll
+            ? { ...student, status: "Present" }
+            : student
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          id: Date.now(),
+          roll: studentRoll,
+          name: studentName,
+          status: "Present",
+        },
+      ];
+    });
+
+    alert(`${studentName} marked Present successfully`);
+
+    setStudentName("");
+    setStudentRoll("");
+  };
+
+  // Save Attendance
+  const saveAttendance = () => {
+    const presentCount = students.filter(
+      (student) => student.status === "Present"
+    ).length;
+
+    const absentCount = students.filter(
+      (student) => student.status === "Absent"
+    ).length;
+
+    const record = {
+      date: new Date().toLocaleDateString(),
+      subject: selectedSubject || "General",
+      present: presentCount,
+      absent: absentCount,
+      total: students.length,
+    };
+
+    setAttendanceHistory((prev) => [...prev, record]);
+
+    alert("Attendance saved successfully");
+  };
+
+  // Get Scanned Data
+  const getScannedData = () => {
+    try {
+      return JSON.parse(scanResult);
+    } catch {
+      return null;
+    }
+  };
+
+  // Format Timer
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+
+    return `${minutes.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  // Registration Page
+  if (!isRegistered) {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <div className="logo-box">AW</div>
+          <div className="logo-section">
+            <h1>AttendanceWise</h1>
+            <p>Smart Attendance Management System</p>
+          </div>
 
-          <h1>AttendanceWise</h1>
-          <p className="subtitle">
-            Smart Attendance Management System
+          <h2>Create Account</h2>
+
+          <form onSubmit={handleRegister}>
+            <input
+              type="text"
+              placeholder="Full Name"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+            />
+
+            <input
+              type="email"
+              placeholder="Email Address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            <button type="submit" className="primary-btn">
+              Register
+            </button>
+          </form>
+
+          <p className="auth-switch">
+            Already have an account?{" "}
+            <button
+              className="link-btn"
+              onClick={() => setIsRegistered(true)}
+            >
+              Login
+            </button>
           </p>
-
-          {!showRegister ? (
-            <>
-              <h2>Welcome Back!</h2>
-              <p className="form-text">
-                Login to manage your attendance.
-              </p>
-
-              <input type="email" placeholder="Enter your email" />
-              <input type="password" placeholder="Enter your password" />
-
-              <button onClick={() => setIsLoggedIn(true)}>
-                Login
-              </button>
-
-              <p className="bottom-text">
-                Don't have an account?{" "}
-                <span onClick={() => setShowRegister(true)}>
-                  Create Account
-                </span>
-              </p>
-            </>
-          ) : (
-            <>
-              <h2>Create Account</h2>
-              <p className="form-text">
-                Create your AttendanceWise account.
-              </p>
-
-              <input
-                type="text"
-                placeholder="Full Name"
-                onChange={(e) => setUserName(e.target.value)}
-              />
-
-              <input type="email" placeholder="Enter your email" />
-              <input type="password" placeholder="Create password" />
-
-              <button onClick={() => setShowRegister(false)}>
-                Create Account
-              </button>
-
-              <p className="bottom-text">
-                Already have an account?{" "}
-                <span onClick={() => setShowRegister(false)}>
-                  Login
-                </span>
-              </p>
-            </>
-          )}
         </div>
       </div>
     );
   }
 
-  // MAIN APP
+  // Login Page
+  if (!isLoggedIn) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <div className="logo-section">
+            <h1>AttendanceWise</h1>
+            <p>Welcome back</p>
+          </div>
+
+          <h2>Login</h2>
+
+          <form onSubmit={handleLogin}>
+            <input
+              type="email"
+              placeholder="Email Address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            <button type="submit" className="primary-btn">
+              Login
+            </button>
+          </form>
+
+          <p className="auth-switch">
+            New user?{" "}
+            <button
+              className="link-btn"
+              onClick={() => setIsRegistered(false)}
+            >
+              Create Account
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const presentStudents = students.filter(
+    (student) => student.status === "Present"
+  ).length;
+
+  const absentStudents = students.filter(
+    (student) => student.status === "Absent"
+  ).length;
+
+  const notMarkedStudents = students.filter(
+    (student) => student.status === "Not Marked"
+  ).length;
+
   return (
     <div className="app-layout">
-
-      {/* SIDEBAR */}
       <aside className="sidebar">
-        <div className="brand">
-          <div className="small-logo">AW</div>
-          <span>AttendanceWise</span>
+        <div className="sidebar-logo">
+          <h2>AttendanceWise</h2>
+          <p>Smart Attendance</p>
         </div>
 
-        <nav>
+        <nav className="sidebar-nav">
           {[
             "Dashboard",
             "Students",
@@ -170,278 +456,601 @@ function App() {
           ].map((page) => (
             <button
               key={page}
-              className={
-                activePage === page ? "active-menu" : ""
-              }
+              className={`nav-item ${
+                activePage === page ? "active" : ""
+              }`}
               onClick={() => setActivePage(page)}
             >
-              {page}
+              <span>
+                {page === "Dashboard" && "📊"}
+                {page === "Students" && "👨‍🎓"}
+                {page === "Attendance" && "📝"}
+                {page === "QR Attendance" && "📱"}
+                {page === "Voice Attendance" && "🎙️"}
+                {page === "Reports" && "📈"}
+                {page === "Settings" && "⚙️"}
+              </span>
+
+              <span>{page}</span>
             </button>
           ))}
         </nav>
 
-        <button
-          className="logout-btn"
-          onClick={() => setIsLoggedIn(false)}
-        >
-          Logout
+        <button className="logout-btn" onClick={handleLogout}>
+          🚪 Logout
         </button>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main className="main-content">
-
-        {/* TOPBAR */}
-        <div className="topbar">
+        <header className="topbar">
           <div>
             <h1>{activePage}</h1>
-            <p>Smart attendance management made simple.</p>
+            <p>Welcome back, {userName}</p>
           </div>
 
-          <div className="profile">
-            {userName || "Admin"}
-          </div>
-        </div>
+          <div className="profile-box">
+            <div className="profile-avatar">
+              {userName
+                ? userName.charAt(0).toUpperCase()
+                : "A"}
+            </div>
 
-        {/* DASHBOARD */}
+            <div>
+              <strong>{userName || "Admin"}</strong>
+              <small>Teacher / Admin</small>
+            </div>
+          </div>
+        </header>
+
+        {/* Dashboard */}
         {activePage === "Dashboard" && (
           <>
             <div className="stats-grid">
-
               <div className="stat-card">
-                <h3>Total Students</h3>
-                <strong>{students.length}</strong>
+                <div className="stat-icon">👨‍🎓</div>
+                <div>
+                  <h3>{students.length}</h3>
+                  <p>Total Students</p>
+                </div>
               </div>
 
               <div className="stat-card">
-                <h3>Present Today</h3>
-                <strong>{presentCount}</strong>
+                <div className="stat-icon">✅</div>
+                <div>
+                  <h3>{presentStudents}</h3>
+                  <p>Present Today</p>
+                </div>
               </div>
 
               <div className="stat-card">
-                <h3>Absent Today</h3>
-                <strong>{absentCount}</strong>
+                <div className="stat-icon">❌</div>
+                <div>
+                  <h3>{absentStudents}</h3>
+                  <p>Absent Today</p>
+                </div>
               </div>
 
               <div className="stat-card">
-                <h3>Attendance Rate</h3>
-                <strong>
-                  {students.length
-                    ? Math.round(
-                        (presentCount / students.length) * 100
-                      )
-                    : 0}
-                  %
-                </strong>
+                <div className="stat-icon">⏳</div>
+                <div>
+                  <h3>{notMarkedStudents}</h3>
+                  <p>Not Marked</p>
+                </div>
               </div>
-
             </div>
 
-            <div className="welcome-box">
-              <h2>Welcome to AttendanceWise</h2>
-              <p>
-                Manage students, mark attendance, and view reports
-                from one simple dashboard.
+            <div className="content-card">
+              <h2>Quick Actions</h2>
+
+              <p className="section-subtitle">
+                Manage your classroom attendance easily.
               </p>
+
+              <div className="quick-actions">
+                <button
+                  className="action-card"
+                  onClick={() => setActivePage("Students")}
+                >
+                  <span>👨‍🎓</span>
+                  <strong>Add Students</strong>
+                  <small>Manage student list</small>
+                </button>
+
+                <button
+                  className="action-card"
+                  onClick={() => setActivePage("Attendance")}
+                >
+                  <span>📝</span>
+                  <strong>Mark Attendance</strong>
+                  <small>Mark daily attendance</small>
+                </button>
+
+                <button
+                  className="action-card"
+                  onClick={() => setActivePage("QR Attendance")}
+                >
+                  <span>📱</span>
+                  <strong>Generate QR</strong>
+                  <small>Quick attendance using QR</small>
+                </button>
+
+                <button
+                  className="action-card"
+                  onClick={() => setActivePage("Reports")}
+                >
+                  <span>📈</span>
+                  <strong>View Reports</strong>
+                  <small>Check attendance reports</small>
+                </button>
+              </div>
             </div>
           </>
         )}
 
-        {/* STUDENTS */}
+        {/* Students */}
         {activePage === "Students" && (
           <div className="content-card">
+            <h2>Student Management</h2>
 
+            <p className="section-subtitle">
+              Add and manage students in your classroom.
+            </p>
+
+            <form
+              className="add-student-form"
+              onSubmit={addStudent}
+            >
+              <input
+                type="text"
+                placeholder="Student Name"
+                value={newStudent.name}
+                onChange={(e) =>
+                  setNewStudent({
+                    ...newStudent,
+                    name: e.target.value,
+                  })
+                }
+              />
+
+              <input
+                type="text"
+                placeholder="Roll Number"
+                value={newStudent.roll}
+                onChange={(e) =>
+                  setNewStudent({
+                    ...newStudent,
+                    roll: e.target.value,
+                  })
+                }
+              />
+
+              <button type="submit" className="primary-btn">
+                + Add Student
+              </button>
+            </form>
+
+            <div className="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Roll No.</th>
+                    <th>Student Name</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {students.map((student) => (
+                    <tr key={student.id}>
+                      <td>{student.roll}</td>
+                      <td>{student.name}</td>
+                      <td>{student.status}</td>
+                      <td>
+                        <button
+                          className="delete-btn"
+                          onClick={() =>
+                            deleteStudent(student.id)
+                          }
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Attendance */}
+        {activePage === "Attendance" && (
+          <div className="content-card attendance-card">
             <div className="card-header">
-              <h2>Student Management</h2>
+              <div>
+                <h2>Mark Attendance</h2>
 
-              <div className="add-student">
-                <input
-                  value={newStudent}
-                  onChange={(e) => setNewStudent(e.target.value)}
-                  placeholder="Enter student name"
-                />
+                <p className="section-subtitle">
+                  Select Present or Absent for each student.
+                </p>
+              </div>
 
-                <button onClick={addStudent}>
-                  Add Student
+              <div className="attendance-actions">
+                <button
+                  className="present-btn"
+                  onClick={markAllPresent}
+                >
+                  Mark All Present
+                </button>
+
+                <button
+                  className="absent-btn"
+                  onClick={markAllAbsent}
+                >
+                  Mark All Absent
                 </button>
               </div>
             </div>
 
-            <table>
-              <thead>
-                <tr>
-                  <th>Roll No.</th>
-                  <th>Student Name</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {students.map((student) => (
-                  <tr key={student.id}>
-                    <td>{student.roll}</td>
-                    <td>{student.name}</td>
-                    <td>
-                      <span className="status">
-                        {student.status}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="delete-btn"
-                        onClick={() => deleteStudent(student.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
+            <div className="attendance-table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Roll No.</th>
+                    <th>Student Name</th>
+                    <th>Current Status</th>
+                    <th>Mark Attendance</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
 
+                <tbody>
+                  {students.map((student) => (
+                    <tr key={student.id}>
+                      <td>{student.roll}</td>
+                      <td>{student.name}</td>
+
+                      <td>
+                        <span
+                          className={`attendance-status ${
+                            student.status === "Present"
+                              ? "status-present"
+                              : student.status === "Absent"
+                              ? "status-absent"
+                              : "status-not-marked"
+                          }`}
+                        >
+                          {student.status}
+                        </span>
+                      </td>
+
+                      <td>
+                        <button
+                          className="present-btn"
+                          onClick={() =>
+                            changeStatus(
+                              student.id,
+                              "Present"
+                            )
+                          }
+                        >
+                          Present
+                        </button>
+
+                        <button
+                          className="absent-btn"
+                          onClick={() =>
+                            changeStatus(
+                              student.id,
+                              "Absent"
+                            )
+                          }
+                        >
+                          Absent
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <button
+              className="primary-btn save-attendance-btn"
+              onClick={saveAttendance}
+            >
+              Save Attendance
+            </button>
           </div>
         )}
 
-        {/* ATTENDANCE */}
-        {activePage === "Attendance" && (
-          <div className="content-card">
-
-            <h2>Mark Attendance</h2>
-            <p className="section-subtitle">
-              Select Present or Absent for each student.
-            </p>
-
-            <table>
-              <thead>
-                <tr>
-                  <th>Roll No.</th>
-                  <th>Student Name</th>
-                  <th>Current Status</th>
-                  <th>Mark Attendance</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {students.map((student) => (
-                  <tr key={student.id}>
-                    <td>{student.roll}</td>
-                    <td>{student.name}</td>
-                    <td>{student.status}</td>
-                    <td>
-                      <button
-                        className="present-btn"
-                        onClick={() =>
-                          changeStatus(student.id, "Present")
-                        }
-                      >
-                        Present
-                      </button>
-
-                      <button
-                        className="absent-btn"
-                        onClick={() =>
-                          changeStatus(student.id, "Absent")
-                        }
-                      >
-                        Absent
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-          </div>
-        )}
-
-        {/* QR ATTENDANCE */}
+        {/* QR Attendance */}
         {activePage === "QR Attendance" && (
-          <div className="content-card qr-section">
-
+          <div className="content-card">
             <h2>QR Code Attendance</h2>
 
             <p className="section-subtitle">
-              Generate a QR code for students to scan and mark attendance.
+              Teacher QR generate करेगा और student scan करके
+              attendance mark करेगा।
             </p>
 
-            {!showQR ? (
-              <button onClick={generateQR}>
+            <div className="qr-form">
+              <label>Select Subject</label>
+
+              <select
+                value={selectedSubject}
+                onChange={(e) =>
+                  setSelectedSubject(e.target.value)
+                }
+              >
+                <option value="">Choose Subject</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Computer Science">
+                  Computer Science
+                </option>
+                <option value="English">English</option>
+              </select>
+
+              <label>Select Date</label>
+
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) =>
+                  setSelectedDate(e.target.value)
+                }
+              />
+
+              <button
+                className="primary-btn"
+                onClick={generateQR}
+              >
                 Generate QR Code
               </button>
-            ) : (
-              <div className="qr-box">
+            </div>
 
-                <h3>Scan this QR Code</h3>
+            {qrData && (
+              <div className="qr-result">
+                <h3>Teacher Attendance QR Code</h3>
 
                 <QRCodeCanvas
-                  value={qrSession}
-                  size={250}
-                  level="H"
+                  value={qrData}
+                  size={220}
+                  includeMargin={true}
                 />
 
-                <p className="qr-session">
-                  Session ID: {qrSession}
+                <div className="qr-timer">
+                  <h3>QR Valid For: {formatTime(timeLeft)}</h3>
+
+                  <p>
+                    QR Code 30 minutes बाद automatically expire हो जाएगा।
+                  </p>
+                </div>
+
+                <p>
+                  Student phone से इस QR code को scan कर सकता है।
                 </p>
 
-                <h3>
-                  Time Remaining:{" "}
-                  {Math.floor(qrTimeLeft / 60)}:
-                  {(qrTimeLeft % 60)
-                    .toString()
-                    .padStart(2, "0")}
-                </h3>
+                <hr />
 
-                <p className="expiry-text">
-                  QR code will expire after 30 minutes.
-                </p>
+                <h3>Student QR Scanner</h3>
 
-                <button onClick={() => setShowQR(false)}>
-                  Close QR
+                <button
+                  className="primary-btn"
+                  onClick={startScanner}
+                >
+                  Start QR Scanner
                 </button>
 
+                {scanning && <div id="qr-reader"></div>}
+
+                {scanResult && (
+                  <div className="scan-result">
+                    <h4>QR Scanned Successfully</h4>
+
+                    {getScannedData() ? (
+                      <>
+                        <p>
+                          Subject:{" "}
+                          {getScannedData().subject}
+                        </p>
+
+                        <p>
+                          Date: {getScannedData().date}
+                        </p>
+
+                        <p>
+                          Teacher:{" "}
+                          {getScannedData().teacher}
+                        </p>
+
+                        <input
+                          type="text"
+                          placeholder="Student Name"
+                          value={studentName}
+                          onChange={(e) =>
+                            setStudentName(e.target.value)
+                          }
+                        />
+
+                        <input
+                          type="text"
+                          placeholder="Roll Number"
+                          value={studentRoll}
+                          onChange={(e) =>
+                            setStudentRoll(e.target.value)
+                          }
+                        />
+
+                        <button
+                          className="primary-btn"
+                          onClick={markStudentFromQR}
+                        >
+                          Mark Attendance Present
+                        </button>
+                      </>
+                    ) : (
+                      <p>
+                        Invalid QR Code. Please scan the AttendanceWise
+                        QR Code.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
-
           </div>
         )}
 
-        {/* VOICE ATTENDANCE */}
+        {/* Voice Attendance */}
         {activePage === "Voice Attendance" && (
-          <div className="empty-card">
-            <div className="feature-icon">🎙️</div>
+          <div className="content-card">
             <h2>Voice Attendance</h2>
-            <p>
-              Voice-based attendance feature will be integrated here.
+
+            <p className="section-subtitle">
+              Future feature: Mark attendance using voice recognition.
             </p>
-            <button>Start Voice Attendance</button>
+
+            <div className="voice-box">
+              <div className="voice-icon">🎙️</div>
+
+              <h3>Voice Attendance Coming Soon</h3>
+
+              <p>
+                This feature will allow teachers to call student names
+                and mark attendance automatically.
+              </p>
+
+              <button
+                className="primary-btn"
+                onClick={() =>
+                  alert("Voice Attendance feature is coming soon!")
+                }
+              >
+                Start Voice Attendance
+              </button>
+            </div>
           </div>
         )}
 
-        {/* REPORTS */}
+        {/* Reports */}
         {activePage === "Reports" && (
-          <div className="empty-card">
-            <div className="feature-icon">📊</div>
+          <div className="content-card">
             <h2>Attendance Reports</h2>
-            <p>
-              View daily, weekly, and monthly attendance reports.
+
+            <p className="section-subtitle">
+              View attendance summary and history.
             </p>
-            <button>Generate Report</button>
+
+            <div className="report-summary">
+              <div className="report-box">
+                <h3>{students.length}</h3>
+                <p>Total Students</p>
+              </div>
+
+              <div className="report-box">
+                <h3>{presentStudents}</h3>
+                <p>Present</p>
+              </div>
+
+              <div className="report-box">
+                <h3>{absentStudents}</h3>
+                <p>Absent</p>
+              </div>
+
+              <div className="report-box">
+                <h3>
+                  {students.length > 0
+                    ? (
+                        (presentStudents / students.length) *
+                        100
+                      ).toFixed(1)
+                    : 0}
+                  %
+                </h3>
+
+                <p>Attendance Percentage</p>
+              </div>
+            </div>
+
+            <h3>Attendance History</h3>
+
+            {attendanceHistory.length === 0 ? (
+              <p>No attendance records saved yet.</p>
+            ) : (
+              <div className="table-responsive">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Subject</th>
+                      <th>Present</th>
+                      <th>Absent</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {attendanceHistory.map((record, index) => (
+                      <tr key={index}>
+                        <td>{record.date}</td>
+                        <td>{record.subject}</td>
+                        <td>{record.present}</td>
+                        <td>{record.absent}</td>
+                        <td>{record.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
-        {/* SETTINGS */}
+        {/* Settings */}
         {activePage === "Settings" && (
-          <div className="empty-card">
-            <div className="feature-icon">⚙️</div>
+          <div className="content-card">
             <h2>Settings</h2>
-            <p>
-              Manage your profile and application settings.
+
+            <p className="section-subtitle">
+              Manage your AttendanceWise account settings.
             </p>
-            <button>Save Settings</button>
+
+            <div className="settings-box">
+              <label>Teacher Name</label>
+
+              <input
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+              />
+
+              <label>Email Address</label>
+
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+
+              <button
+                className="primary-btn"
+                onClick={() => {
+                  localStorage.setItem(
+                    "attendancewise_user",
+                    userName
+                  );
+
+                  alert("Settings saved successfully");
+                }}
+              >
+                Save Settings
+              </button>
+            </div>
           </div>
         )}
-
       </main>
     </div>
   );
