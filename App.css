@@ -1,0 +1,435 @@
+.qr-section {
+  text-align: center;
+}
+
+.qr-box {
+  margin: 25px auto;
+  padding: 25px;
+  border-radius: 15px;
+  background: white;
+  width: fit-content;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
+
+.qr-box canvas {
+  display: block;
+  margin: 20px auto;
+}
+
+.qr-session {
+  font-size: 12px;
+  color: #666;
+  max-width: 250px;
+  word-break: break-all;
+}
+
+.qr-box h3 {
+  margin: 15px 0;
+}
+
+.expiry-text {
+  color: #777;
+  font-size: 14px;
+}
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f7fb;
+  color: #1f2937;
+}
+
+/* LOGIN PAGE */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #eef2ff, #f8fafc);
+}
+
+.auth-card {
+  .auth-card {
+  width: 100%;
+  max-width: 420px;
+  margin: 20px;
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.12);
+  text-align: center;
+}
+
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.12);
+  text-align: center;
+}
+
+.logo-box,
+.small-logo {
+  background: #4f46e5;
+  color: white;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.logo-box {
+  width: 65px;
+  height: 65px;
+  margin: auto;
+  font-size: 24px;
+}
+
+.auth-card h1 {
+  margin: 18px 0 8px;
+  color: #111827;
+}
+
+.auth-card h2 {
+  margin-top: 30px;
+}
+
+.subtitle,
+.form-text {
+  color: #6b7280;
+}
+
+.auth-card input,
+.add-student input {
+  width: 100%;
+  padding: 13px;
+  margin: 8px 0;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.auth-card button,
+.content-card button,
+.empty-card button,
+.add-student button {
+  border: none;
+  background: #4f46e5;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.auth-card button {
+  width: 100%;
+  margin-top: 15px;
+}
+
+.auth-card button:hover,
+.content-card button:hover,
+.empty-card button:hover {
+  background: #3730a3;
+}
+
+.bottom-text {
+  margin-top: 22px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.bottom-text span {
+  color: #4f46e5;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* MAIN APP */
+
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+}
+
+.sidebar {
+  width: 240px;
+  background: #111827;
+  color: white;
+  padding: 25px 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 40px;
+}
+
+.small-logo {
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar nav button,
+.logout-btn {
+  border: none;
+  background: transparent;
+  color: #d1d5db;
+  text-align: left;
+  padding: 13px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sidebar nav button:hover,
+.active-menu {
+  background: #4f46e5 !important;
+  color: white !important;
+}
+
+.logout-btn {
+  margin-top: auto;
+  background: #dc2626;
+  color: white;
+  text-align: center !important;
+}
+
+.main-content {
+  flex: 1;
+  padding: 30px;
+  overflow-x: auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.topbar p {
+  color: #6b7280;
+}
+
+.profile {
+  background: #4f46e5;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 20px;
+  font-weight: bold;
+}
+
+/* DASHBOARD */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.stat-card {
+  background: white;
+  padding: 25px;
+  border-radius: 14px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card h3 {
+  color: #6b7280;
+  font-size: 14px;
+  margin-top: 0;
+}
+
+.stat-card strong {
+  font-size: 30px;
+  color: #4f46e5;
+}
+
+.welcome-box,
+.content-card,
+.empty-card {
+  background: white;
+  border-radius: 14px;
+  padding: 30px;
+  margin-top: 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.welcome-box p,
+.section-subtitle,
+.empty-card p {
+  color: #6b7280;
+}
+
+/* STUDENTS */
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.add-student {
+  display: flex;
+  gap: 10px;
+}
+
+.add-student input {
+  margin: 0;
+  width: 220px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 15px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+th {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.status {
+  background: #dcfce7;
+  color: #166534;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+.delete-btn {
+  background: #dc2626 !important;
+  padding: 8px 14px !important;
+}
+
+.present-btn {
+  background: #16a34a !important;
+  margin-right: 8px;
+  padding: 8px 14px !important;
+}
+
+.absent-btn {
+  background: #dc2626 !important;
+  padding: 8px 14px !important;
+}
+
+/* OTHER PAGES */
+
+.empty-card {
+  text-align: center;
+  min-height: 250px;
+}
+
+.feature-icon {
+  font-size: 45px;
+  margin-bottom: 15px;
+}
+
+/* QR */
+
+.qr-section {
+  text-align: center;
+}
+
+.qr-box {
+  margin: 25px auto;
+  padding: 25px;
+  border-radius: 15px;
+  background: white;
+  width: fit-content;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
+
+.qr-box canvas {
+  display: block;
+  margin: 20px auto;
+}
+
+.qr-session {
+  font-size: 12px;
+  color: #666;
+  max-width: 250px;
+  word-break: break-all;
+}
+
+.qr-box h3 {
+  margin: 15px 0;
+}
+
+.expiry-text {
+  color: #777;
+  font-size: 14px;
+}
+
+/* MOBILE */
+
+@media (max-width: 800px) {
+  .sidebar {
+    width: 190px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .topbar {
+    gap: 15px;
+  }
+}
+.auth-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #eef2ff, #f8fafc);
+}
+
+.auth-card input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 25px 20px;
+  }
+}
